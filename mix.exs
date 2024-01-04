@@ -30,9 +30,6 @@ defmodule AudioTagger.MixProject do
       {:exla, ">= 0.0.0"},
       {:explorer, "~> 0.7.0"},
       {:kino_explorer, "~> 0.1.11"}
-
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
   end
 end
