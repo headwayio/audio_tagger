@@ -1,10 +1,14 @@
 defmodule AudioTagger.MixProject do
   use Mix.Project
 
+  @version "0.1.0"
+  @description "Provides utilities to transcribe an audio recording and tag portions based on a list of provided terms."
+
   def project do
     [
       app: :audio_tagger,
-      version: "0.1.0",
+      version: @version,
+      description: @description,
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
       deps: deps()
