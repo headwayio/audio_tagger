@@ -6,12 +6,12 @@ defmodule AudioTagger.Tagger do
 
   require Explorer.DataFrame
 
-  def tag_audio(transcription_df, labels_df, classifier_type \\ :semantic_search) do
-    case classifier_type do
-      :semantic_search -> AudioTagger.Classifier.SemanticSearch.tag(transcription_df, labels_df)
-      :text_classification -> AudioTagger.Classifier.SemanticSearch.tag(transcription_df, labels_df)
-    end
-  end
+  # def tag_audio(transcription_df, labels_df, classifier_type \\ :semantic_search) do
+  #   case classifier_type do
+  #     :semantic_search -> AudioTagger.Classifier.SemanticSearch.tag(transcription_df, labels_df)
+  #     :text_classification -> AudioTagger.Classifier.SemanticSearch.tag(transcription_df, labels_df)
+  #   end
+  # end
 
   def code_for_label(labels_df, description) do
     Explorer.DataFrame.filter(labels_df, short_description == ^description)
@@ -19,7 +19,7 @@ defmodule AudioTagger.Tagger do
     |> Explorer.Series.first()
   end
 
-  def prepare_labels(labels_df) do
+  def to_list_of_label_descriptions(labels_df) do
     labels_df
     |> Explorer.DataFrame.pull("short_description")
     |> Explorer.Series.to_list()

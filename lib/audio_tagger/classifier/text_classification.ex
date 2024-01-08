@@ -2,7 +2,7 @@ defmodule AudioTagger.Classifier.TextClassification do
   @moduledoc """
   Run the portions of the transcribed text through the facebook/bart-large-mnli model and do zero-shot
   text-classification to attempt to tag each with a procedure code (based on the ICD-10 code list).
-  
+
   The number of labels provided to the model has a direct impact on performance (each is run with 14 text entries):
   - Local CPU (1,000 labels): 1793.8s ~= 29+m
   - Local CPU (10 labels): 31.8s
@@ -19,7 +19,7 @@ defmodule AudioTagger.Classifier.TextClassification do
     - and a labels_df that contains "code" and "short_description" columns
   """
   def tag(transcription_df, labels_df) do
-    labels = AudioTagger.Tagger.prepare_labels(labels_df)
+    labels = AudioTagger.Tagger.to_list_of_label_descriptions(labels_df)
     serving = prepare_serving(labels)
 
     tags =
@@ -33,8 +33,9 @@ defmodule AudioTagger.Classifier.TextClassification do
           classification
           |> Enum.fetch(0)
 
-        code = AudioTagger.Tagger.code_for_label(labels_df, description)
-        |> IO.inspect(label: "Detected code for #{element}")
+        code =
+          AudioTagger.Tagger.code_for_label(labels_df, description)
+          |> IO.inspect(label: "Detected code for #{element}")
 
         "#{code}: #{description}"
       end)
