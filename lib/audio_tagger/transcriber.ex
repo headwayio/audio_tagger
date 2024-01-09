@@ -31,7 +31,7 @@ defmodule AudioTagger.Transcriber do
     featurizer
   end
 
-  defp prepare_serving(featurizer) do
+  def prepare_serving(featurizer) do
     {:ok, model_info} = Bumblebee.load_model({:hf, "openai/whisper-tiny"})
     # {:ok, featurizer} = Bumblebee.load_featurizer({:hf, "openai/whisper-tiny"})
     {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, "openai/whisper-tiny"})
