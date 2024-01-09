@@ -77,28 +77,21 @@ defmodule AudioTagger.Classifier.SemanticSearch do
         label_embeddings.pooled_state
       )
 
-    # threshold = 0.5
-    #
-    # indices =
-    #   similarities
-    #   |> Nx.to_list()
-    #   |> Enum.at(0)
-    #   |> Enum.with_index(fn element, index -> {index, element} end)
-    #   |> Filter for top 5 or so
-    #   |> Enum.reduce(
-    #     [],
-    #     fn {index, element}, acc ->
-    #     # Only include those elements that meet the threshold
-    #       if element > threshold do
-    #         acc ++ [index]
-    #       else
-    #         acc
-    #       end
-    #     end
-    #   )
+    # == Postprocessing ==
+    # -- 1. Remove matches that don't exceed a given threshold
+    threshold = 0.7
+
+    # Create a tensor containing either 1 or 0 based on whether the value is above the threshold.
+    threshold_mask = Nx.greater(similarities, threshold)
+
+    # Create a new tensor based on `similarities` where any value equal to or below the threshold is replaced with 0.
+    with_below_threshold_removed = Nx.select(threshold_mask, similarities, 0)
+
+    # -- 2. Retrieve the top few matching codes to present as options
+    # (not yet implemented)
 
     result =
-      similarities
+      with_below_threshold_removed
       # [0.5, 0.2, 0.7, ... 73k times]
       |> Nx.argmax()
       # 2
