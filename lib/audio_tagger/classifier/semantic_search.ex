@@ -37,10 +37,13 @@ defmodule AudioTagger.Classifier.SemanticSearch do
       |> Explorer.DataFrame.pull("text")
       |> Explorer.Series.downcase()
       |> Explorer.Series.transform(fn element ->
-        match_index = search_for_similar_code(model_info, tokenizer, label_embeddings, element)
-        {match_code, match_label} = find_label_for_index(match_index, labels, labels_df)
+        search_for_similar_codes(model_info, tokenizer, label_embeddings, element)
+        |> Enum.map(fn index ->
+          {match_code, match_label} = find_label_for_index(index, labels, labels_df)
 
-        "#{match_code}: #{match_label}"
+          "#{match_code}: #{match_label}"
+        end)
+        |> Enum.join(", ")
       end)
 
     output_elapsed("Finished search for matching vectors for transcribed text", time_search_start)
@@ -58,7 +61,7 @@ defmodule AudioTagger.Classifier.SemanticSearch do
     Axon.predict(model_info.model, model_info.params, label_inputs, compiler: EXLA)
   end
 
-  defp search_for_similar_code(model_info, tokenizer, label_embeddings, element) do
+  defp search_for_similar_codes(model_info, tokenizer, label_embeddings, element) do
     search_input = Bumblebee.apply_tokenizer(tokenizer, [element])
 
     search_embedding =
@@ -68,12 +71,40 @@ defmodule AudioTagger.Classifier.SemanticSearch do
     |> Nx.to_list()
     |> IO.inspect(label: "Searching for match for vector embedding")
 
-    Bumblebee.Utils.Nx.cosine_similarity(
-      search_embedding.pooled_state,
-      label_embeddings.pooled_state
-    )
-    |> Nx.argmax()
-    |> Nx.to_number()
+    similarities =
+      Bumblebee.Utils.Nx.cosine_similarity(
+        search_embedding.pooled_state,
+        label_embeddings.pooled_state
+      )
+
+    # threshold = 0.5
+    #
+    # indices =
+    #   similarities
+    #   |> Nx.to_list()
+    #   |> Enum.at(0)
+    #   |> Enum.with_index(fn element, index -> {index, element} end)
+    #   |> Filter for top 5 or so
+    #   |> Enum.reduce(
+    #     [],
+    #     fn {index, element}, acc ->
+    #     # Only include those elements that meet the threshold
+    #       if element > threshold do
+    #         acc ++ [index]
+    #       else
+    #         acc
+    #       end
+    #     end
+    #   )
+
+    result =
+      similarities
+      # [0.5, 0.2, 0.7, ... 73k times]
+      |> Nx.argmax()
+      # 2
+      |> Nx.to_number()
+
+    [result]
   end
 
   defp find_label_for_index(index, labels, labels_df) do
