@@ -25,11 +25,13 @@ defmodule AudioTagger.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:kino, "~> 0.11.3"},
-      {:kino_bumblebee, "~> 0.4.0"},
+      # {:kino, "~> 0.11.3"},
+      # {:kino_bumblebee, "~> 0.4.0"},
+      # {:kino_explorer, "~> 0.1.11"}
+
+      {:bumblebee, "~> 0.4.0"},
       {:exla, ">= 0.0.0"},
-      {:explorer, "~> 0.7.0"},
-      {:kino_explorer, "~> 0.1.11"}
+      {:explorer, "~> 0.7.0"}
     ]
   end
 end
