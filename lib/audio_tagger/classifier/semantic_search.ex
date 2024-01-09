@@ -22,10 +22,23 @@ defmodule AudioTagger.Classifier.SemanticSearch do
     File.write(path, iodata)
   end
 
+  def tag_one(model_tuple, labels_df, label_embeddings, element) do
+    {model_info, tokenizer} = model_tuple
+    labels = AudioTagger.Tagger.to_list_of_label_descriptions(labels_df)
+
+    search_for_similar_codes(model_info, tokenizer, label_embeddings, element)
+    |> Enum.map(fn index ->
+      {match_code, match_label} = find_label_for_index(index, labels, labels_df)
+
+      "#{match_code}: #{match_label}"
+    end)
+    |> Enum.join(", ")
+  end
+
   def tag(transcription_df, labels_df, label_vectors_path) do
     time_prep_start = System.monotonic_time()
     {model_info, tokenizer} = prepare_model()
-    labels = AudioTagger.Tagger.to_list_of_label_descriptions(labels_df)
+    # labels = AudioTagger.Tagger.to_list_of_label_descriptions(labels_df)
     label_embeddings = load_label_vectors(label_vectors_path)
     output_elapsed("Prepared model and loaded label embeddings", time_prep_start)
 
@@ -37,13 +50,7 @@ defmodule AudioTagger.Classifier.SemanticSearch do
       |> Explorer.DataFrame.pull("text")
       |> Explorer.Series.downcase()
       |> Explorer.Series.transform(fn element ->
-        search_for_similar_codes(model_info, tokenizer, label_embeddings, element)
-        |> Enum.map(fn index ->
-          {match_code, match_label} = find_label_for_index(index, labels, labels_df)
-
-          "#{match_code}: #{match_label}"
-        end)
-        |> Enum.join(", ")
+        tag_one({model_info, tokenizer}, labels_df, label_embeddings, element)
       end)
 
     output_elapsed("Finished search for matching vectors for transcribed text", time_search_start)
@@ -110,13 +117,13 @@ defmodule AudioTagger.Classifier.SemanticSearch do
     {match_code, match_label}
   end
 
-  defp load_label_vectors(path) do
+  def load_label_vectors(path) do
     {:ok, binary} = File.read(path)
 
     Nx.deserialize(binary)
   end
 
-  defp prepare_model do
+  def prepare_model do
     model_name = "sentence-transformers/all-MiniLM-L6-v2"
     {:ok, model_info} = Bumblebee.load_model({:hf, model_name})
     {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, model_name})
