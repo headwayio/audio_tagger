@@ -64,13 +64,16 @@ defmodule AudioTagger.Classifier.SemanticSearch do
     search_embedding =
       Axon.predict(model_info.model, model_info.params, search_input, compiler: EXLA)
 
+    search_embedding.pooled_state
+    |> Nx.to_list()
+    |> IO.inspect(label: "Searching for match for vector embedding")
+
     Bumblebee.Utils.Nx.cosine_similarity(
       search_embedding.pooled_state,
       label_embeddings.pooled_state
     )
     |> Nx.argmax()
     |> Nx.to_number()
-    |> dbg()
   end
 
   defp find_label_for_index(index, labels, labels_df) do
