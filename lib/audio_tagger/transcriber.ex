@@ -8,17 +8,21 @@ defmodule AudioTagger.Transcriber do
       |> Nx.reshape({:auto, num_channels})
       |> Nx.mean(axes: [1])
 
-    Nx.Serving.run(serving, audio)
-    |> Enum.reduce([], fn chunk, acc ->
+    serving
+    |> Nx.Serving.run(audio)
+    |> Stream.map(fn chunk ->
+      # |> Enum.reduce([], fn chunk, acc ->
       [start_mark, end_mark] =
         for seconds <- [chunk.start_timestamp_seconds, chunk.end_timestamp_seconds] do
           seconds |> round() |> Time.from_seconds_after_midnight() |> Time.to_string()
         end
 
-      [%{start_mark: start_mark, end_mark: end_mark, text: chunk.text}] ++ acc
+      # [%{start_mark: start_mark, end_mark: end_mark, text: chunk.text}] ++ acc
+      %{start_mark: start_mark, end_mark: end_mark, text: chunk.text}
     end)
-    |> Enum.reverse()
-    |> Explorer.DataFrame.new()
+
+    # |> Enum.reverse()
+    # |> Explorer.DataFrame.new()
   end
 
   def prepare_featurizer do
