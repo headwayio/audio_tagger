@@ -13,9 +13,14 @@ defmodule AudioTagger.Classifier.SemanticSearch do
   This is heavily based on the example given by Adrian Philipp (@adri) in https://github.com/elixir-nx/bumblebee/issues/100#issuecomment-1345563122
   """
 
-  def precalculate_label_vectors(labels_df, path) do
+  def precalculate_label_vectors(labels_series, path) do
     time_label_start = System.monotonic_time()
-    label_embeddings = embed_label_vectors(labels_df)
+
+    label_embeddings =
+      labels_series
+      |> Explorer.Series.to_list()
+      |> embed_label_vectors()
+
     output_elapsed("Prepared label vector embeddings", time_label_start)
 
     iodata = Nx.serialize(label_embeddings)
@@ -58,9 +63,8 @@ defmodule AudioTagger.Classifier.SemanticSearch do
     Explorer.DataFrame.put(transcription_df, "tags", tags)
   end
 
-  defp embed_label_vectors(labels_df) do
+  defp embed_label_vectors(labels) do
     {model_info, tokenizer} = prepare_model()
-    labels = AudioTagger.Tagger.to_list_of_label_descriptions(labels_df)
     IO.puts("Creating vector embeddings for #{Enum.count(labels)} labels")
 
     label_inputs = Bumblebee.apply_tokenizer(tokenizer, labels)
@@ -114,7 +118,8 @@ defmodule AudioTagger.Classifier.SemanticSearch do
 
     match_code =
       AudioTagger.Tagger.code_for_label(labels_df, match_label)
-      # |> IO.inspect()
+
+    # |> IO.inspect()
 
     {match_code, match_label}
   end

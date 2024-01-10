@@ -21,7 +21,6 @@ defmodule AudioTagger.Tagger do
 
   def to_list_of_label_descriptions(labels_df) do
     labels_df
-    |> Explorer.DataFrame.pull("short_description")
     |> Explorer.Series.to_list()
   end
 end
