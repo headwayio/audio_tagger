@@ -74,9 +74,9 @@ defmodule AudioTagger.Classifier.SemanticSearch do
     search_embedding =
       Axon.predict(model_info.model, model_info.params, search_input, compiler: EXLA)
 
-    search_embedding.pooled_state
-    |> Nx.to_list()
-    |> IO.inspect(label: "Searching for match for vector embedding")
+    # search_embedding.pooled_state
+    # |> Nx.to_list()
+    # |> IO.inspect(label: "Searching for match for vector embedding")
 
     similarities =
       Bumblebee.Utils.Nx.cosine_similarity(
@@ -114,7 +114,7 @@ defmodule AudioTagger.Classifier.SemanticSearch do
 
     match_code =
       AudioTagger.Tagger.code_for_label(labels_df, match_label)
-      |> IO.inspect()
+      # |> IO.inspect()
 
     {match_code, match_label}
   end
