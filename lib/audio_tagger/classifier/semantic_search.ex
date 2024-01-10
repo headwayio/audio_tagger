@@ -94,8 +94,10 @@ defmodule AudioTagger.Classifier.SemanticSearch do
     # Create a new tensor based on `similarities` where any value equal to or below the threshold is replaced with 0.
     with_below_threshold_removed = Nx.select(threshold_mask, similarities, 0)
 
-    # -- 2. Retrieve the top few matching codes to present as options
-    # (not yet implemented)
+    # -- 2. Further enhancements:
+    # TODO: (not yet implemented)
+    # - Retrieve the top few matching codes to present as options
+    # - Or, if a number of top codes are close in value, return them all
 
     result =
       with_below_threshold_removed
