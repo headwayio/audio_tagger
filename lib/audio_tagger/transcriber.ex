@@ -1,4 +1,7 @@
 defmodule AudioTagger.Transcriber do
+  @model_name "openai/whisper-tiny"
+  # @model_name "openai/whisper-large" ~= 6 GB
+
   def transcribe_audio(featurizer, audio_file, num_channels) do
     serving = prepare_serving(featurizer)
 
@@ -24,18 +27,18 @@ defmodule AudioTagger.Transcriber do
   end
 
   def prepare_featurizer do
-    {:ok, featurizer} = Bumblebee.load_featurizer({:hf, "openai/whisper-tiny"})
+    {:ok, featurizer} = Bumblebee.load_featurizer({:hf, @model_name})
 
     featurizer
   end
 
   def prepare_serving(featurizer) do
-    {:ok, model_info} = Bumblebee.load_model({:hf, "openai/whisper-tiny"})
-    # {:ok, featurizer} = Bumblebee.load_featurizer({:hf, "openai/whisper-tiny"})
-    {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, "openai/whisper-tiny"})
-    {:ok, generation_config} = Bumblebee.load_generation_config({:hf, "openai/whisper-tiny"})
+    {:ok, model_info} = Bumblebee.load_model({:hf, @model_name})
+    {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, @model_name})
+    {:ok, generation_config} = Bumblebee.load_generation_config({:hf, @model_name})
     generation_config = Bumblebee.configure(generation_config, max_new_tokens: 100)
 
+    # Docs: https://hexdocs.pm/bumblebee/Bumblebee.Audio.html#speech_to_text_whisper/5
     Bumblebee.Audio.speech_to_text_whisper(
       model_info,
       featurizer,
@@ -43,6 +46,7 @@ defmodule AudioTagger.Transcriber do
       generation_config,
       compile: [batch_size: 4],
       chunk_num_seconds: 30,
+      # context_num_seconds: 5, # Defaults to 1/6 of :chunk_num_seconds
       timestamps: :segments,
       stream: true,
       defn_options: [compiler: EXLA]
