@@ -1,5 +1,5 @@
 defmodule AudioTagger.Transcriber do
-  @model_name "openai/whisper-tiny"
+  @model_name "openai/whisper-medium"
   # @model_name "openai/whisper-large" ~= 6 GB
 
   def transcribe_audio(featurizer, audio_file, num_channels) do
