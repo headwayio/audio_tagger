@@ -103,14 +103,22 @@ defmodule AudioTagger.Classifier.SemanticSearch do
     # - Retrieve the top few matching codes to present as options
     # - Or, if a number of top codes are close in value, return them all
 
-    result =
+    {_values, indices_of_most_similar} =
       with_below_threshold_removed
-      # [0.5, 0.2, 0.7, ... 73k times]
-      |> Nx.argmax()
-      # 2
-      |> Nx.to_number()
+      |> Nx.top_k(k: 5)
 
-    [result]
+    # [0.5, 0.2, 0.7, ... 73k times]
+    # |> Nx.argmax()
+    # 2
+    # |> Nx.to_number()
+
+    # TODO: Can we include the scores with each match?
+    # similarity_score = 
+    # with_below_threshold_removed
+    # |> Nx.gather(indices_of_most_similar |> Enum.map(fn index -> [index] end))
+
+    indices_of_most_similar
+    |> Nx.to_flat_list()
   end
 
   defp find_label_for_index(index, labels, labels_df) do
