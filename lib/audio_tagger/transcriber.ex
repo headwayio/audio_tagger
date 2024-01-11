@@ -36,7 +36,7 @@ defmodule AudioTagger.Transcriber do
     featurizer
   end
 
-  def prepare_serving(featurizer, model_name) do
+  def prepare_serving(featurizer, model_name \\ @default_model_name) do
     {:ok, model_info} = Bumblebee.load_model({:hf, model_name})
     {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, model_name})
     {:ok, generation_config} = Bumblebee.load_generation_config({:hf, model_name})
