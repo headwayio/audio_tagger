@@ -1,9 +1,12 @@
 defmodule AudioTagger.Transcriber do
-  @model_name "openai/whisper-medium"
+  @default_model_name "openai/whisper-medium"
   # @model_name "openai/whisper-large" ~= 6 GB
 
-  def transcribe_audio(featurizer, audio_file, num_channels) do
-    serving = prepare_serving(featurizer)
+  def transcribe_audio(featurizer, audio_file, opts \\ []) do
+    num_channels = Keyword.get(opts, :num_channels, 2)
+    model_name = Keyword.get(opts, :model_name, @default_model_name)
+
+    serving = prepare_serving(featurizer, model_name)
 
     audio =
       audio_file
@@ -26,16 +29,17 @@ defmodule AudioTagger.Transcriber do
     # |> Explorer.DataFrame.new()
   end
 
-  def prepare_featurizer do
-    {:ok, featurizer} = Bumblebee.load_featurizer({:hf, @model_name})
+  def prepare_featurizer(opts \\ []) do
+    model_name = Keyword.get(opts, :model_name, @default_model_name)
+    {:ok, featurizer} = Bumblebee.load_featurizer({:hf, model_name})
 
     featurizer
   end
 
-  def prepare_serving(featurizer) do
-    {:ok, model_info} = Bumblebee.load_model({:hf, @model_name})
-    {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, @model_name})
-    {:ok, generation_config} = Bumblebee.load_generation_config({:hf, @model_name})
+  def prepare_serving(featurizer, model_name) do
+    {:ok, model_info} = Bumblebee.load_model({:hf, model_name})
+    {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, model_name})
+    {:ok, generation_config} = Bumblebee.load_generation_config({:hf, model_name})
     generation_config = Bumblebee.configure(generation_config, max_new_tokens: 100)
 
     # Docs: https://hexdocs.pm/bumblebee/Bumblebee.Audio.html#speech_to_text_whisper/5
