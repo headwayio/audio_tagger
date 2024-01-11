@@ -12,6 +12,12 @@ defmodule AudioTagger.Classifier.SemanticSearch do
 
   This is heavily based on the example given by Adrian Philipp (@adri) in https://github.com/elixir-nx/bumblebee/issues/100#issuecomment-1345563122
   """
+  alias AudioTagger.Classifier.TagResult
+
+  # Number of matches to return
+  @k 5
+  # Minimum similarity score for returned matches
+  @similarity_threshold 0.7
 
   def precalculate_label_vectors(labels_series, path) do
     time_label_start = System.monotonic_time()
@@ -32,12 +38,11 @@ defmodule AudioTagger.Classifier.SemanticSearch do
     labels = AudioTagger.Tagger.to_list_of_label_descriptions(labels_df)
 
     search_for_similar_codes(model_info, tokenizer, label_embeddings, element)
-    |> Enum.map(fn index ->
+    |> Enum.map(fn {index, score} ->
       {match_code, match_label} = find_label_for_index(index, labels, labels_df)
 
-      "#{match_code}: #{match_label}"
+      %TagResult{code: match_code, label: match_label, score: score}
     end)
-    |> Enum.join(", ")
   end
 
   def tag(transcription_df, labels_df, label_vectors_path) do
@@ -78,10 +83,6 @@ defmodule AudioTagger.Classifier.SemanticSearch do
     search_embedding =
       Axon.predict(model_info.model, model_info.params, search_input, compiler: EXLA)
 
-    # search_embedding.pooled_state
-    # |> Nx.to_list()
-    # |> IO.inspect(label: "Searching for match for vector embedding")
-
     similarities =
       Bumblebee.Utils.Nx.cosine_similarity(
         search_embedding.pooled_state,
@@ -89,36 +90,22 @@ defmodule AudioTagger.Classifier.SemanticSearch do
       )
 
     # == Postprocessing ==
-    # -- 1. Remove matches that don't exceed a given threshold
-    threshold = 0.7
 
-    # Create a tensor containing either 1 or 0 based on whether the value is above the threshold.
-    threshold_mask = Nx.greater(similarities, threshold)
+    # -- Find the top @k similar matches
+    # values = [0.4, 0.5, 0.32, 0.7, 0.9]
+    # indices_of_most_similar = [1200, 4500, 100, 340, 10]
+    {values, indices_of_most_similar} = Nx.top_k(similarities, k: @k)
 
-    # Create a new tensor based on `similarities` where any value equal to or below the threshold is replaced with 0.
-    with_below_threshold_removed = Nx.select(threshold_mask, similarities, 0)
+    List.zip([
+      Nx.to_flat_list(indices_of_most_similar),
+      Nx.to_flat_list(values)
+    ])
+    # -- Remove matches that don't exceed a given threshold
+    |> Enum.filter(fn {_index, score} -> score >= @similarity_threshold end)
 
-    # -- 2. Further enhancements:
-    # TODO: (not yet implemented)
-    # - Retrieve the top few matching codes to present as options
-    # - Or, if a number of top codes are close in value, return them all
-
-    {_values, indices_of_most_similar} =
-      with_below_threshold_removed
-      |> Nx.top_k(k: 5)
-
-    # [0.5, 0.2, 0.7, ... 73k times]
-    # |> Nx.argmax()
-    # 2
-    # |> Nx.to_number()
-
-    # TODO: Can we include the scores with each match?
-    # similarity_score = 
-    # with_below_threshold_removed
-    # |> Nx.gather(indices_of_most_similar |> Enum.map(fn index -> [index] end))
-
-    indices_of_most_similar
-    |> Nx.to_flat_list()
+    # TODO: Potential improvement:
+    # - If the highest code is distant from the next code, only return the highest code (e.g. [0.95, 0.7, 0.72, 0.73, 0.71] => [0.95])
+    # - Or, if a number of top codes are close in value, return them all (e.g. [0.93, 0.71, 0.92, 0.80, 0.91] => [0.93, 0.92, 0.91])
   end
 
   defp find_label_for_index(index, labels, labels_df) do
