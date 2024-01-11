@@ -12,12 +12,13 @@ defmodule AudioTagger.Classifier.SemanticSearch do
 
   This is heavily based on the example given by Adrian Philipp (@adri) in https://github.com/elixir-nx/bumblebee/issues/100#issuecomment-1345563122
   """
+  alias AudioTagger.Classifier.SemanticSearchInput
   alias AudioTagger.Classifier.TagResult
 
   # Number of matches to return
-  @k 5
+  @default_k 5
   # Minimum similarity score for returned matches
-  @similarity_threshold 0.7
+  @default_similarity_threshold 0.7
 
   def precalculate_label_vectors(labels_series, path) do
     time_label_start = System.monotonic_time()
@@ -33,8 +34,8 @@ defmodule AudioTagger.Classifier.SemanticSearch do
     File.write(path, iodata)
   end
 
-  def tag_one(model_tuple, labels_df, label_embeddings, element) do
-    {model_info, tokenizer} = model_tuple
+  def tag_one(%SemanticSearchInput{} = input, element) do
+    %{model_info: model_info, tokenizer: tokenizer, labels_df: labels_df, label_embeddings: label_embeddings, opts: opts} = input
     labels = AudioTagger.Tagger.to_list_of_label_descriptions(labels_df)
 
     search_for_similar_codes(model_info, tokenizer, label_embeddings, element)
@@ -78,6 +79,9 @@ defmodule AudioTagger.Classifier.SemanticSearch do
   end
 
   defp search_for_similar_codes(model_info, tokenizer, label_embeddings, element) do
+    k = Keyword.get(opts, :num_results, @default_k)
+    similarity_threshold = Keyword.get(opts, :similarity_threshold, @default_similarity_threshold)
+
     search_input = Bumblebee.apply_tokenizer(tokenizer, [element])
 
     search_embedding =
@@ -94,14 +98,14 @@ defmodule AudioTagger.Classifier.SemanticSearch do
     # -- Find the top @k similar matches
     # values = [0.4, 0.5, 0.32, 0.7, 0.9]
     # indices_of_most_similar = [1200, 4500, 100, 340, 10]
-    {values, indices_of_most_similar} = Nx.top_k(similarities, k: @k)
+    {values, indices_of_most_similar} = Nx.top_k(similarities, k: k)
 
     List.zip([
       Nx.to_flat_list(indices_of_most_similar),
       Nx.to_flat_list(values)
     ])
     # -- Remove matches that don't exceed a given threshold
-    |> Enum.filter(fn {_index, score} -> score >= @similarity_threshold end)
+    |> Enum.filter(fn {_index, score} -> score >= similarity_threshold end)
 
     # TODO: Potential improvement:
     # - If the highest code is distant from the next code, only return the highest code (e.g. [0.95, 0.7, 0.72, 0.73, 0.71] => [0.95])
