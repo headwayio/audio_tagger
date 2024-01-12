@@ -8,6 +8,7 @@ defmodule AudioTagger.Vectors do
     filename
     |> Explorer.DataFrame.from_csv!(
       dtypes: [
+        {"CODE", :string},
         {"DIAGNOSIS CODE", :string},
         {"LONG DESCRIPTION", :string},
         {"SHORT DESCRIPTION", :string}
