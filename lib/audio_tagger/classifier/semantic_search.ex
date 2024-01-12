@@ -34,11 +34,10 @@ defmodule AudioTagger.Classifier.SemanticSearch do
     File.write(path, iodata)
   end
 
-  def tag_one(%SemanticSearchInput{} = input, element) do
-    %{model_info: model_info, tokenizer: tokenizer, labels_df: labels_df, label_embeddings: label_embeddings, opts: opts} = input
+  def tag_one(%SemanticSearchInput{labels_df: labels_df} = input, element) do
     labels = AudioTagger.Tagger.to_list_of_label_descriptions(labels_df)
 
-    search_for_similar_codes(model_info, tokenizer, label_embeddings, element)
+    search_for_similar_codes(input, element)
     |> Enum.map(fn {index, score} ->
       {match_code, match_label} = find_label_for_index(index, labels, labels_df)
 
@@ -56,12 +55,19 @@ defmodule AudioTagger.Classifier.SemanticSearch do
     IO.puts("Calculating similarity of transcribed text to labels in vector space")
     time_search_start = System.monotonic_time()
 
+    input = %SemanticSearchInput{
+      model_info: model_info,
+      tokenizer: tokenizer,
+      labels_df: labels_df,
+      label_embeddings: label_embeddings
+    }
+
     tags =
       transcription_df
       |> Explorer.DataFrame.pull("text")
       |> Explorer.Series.downcase()
       |> Explorer.Series.transform(fn element ->
-        tag_one({model_info, tokenizer}, labels_df, label_embeddings, element)
+        tag_one(input, element)
       end)
 
     output_elapsed("Finished search for matching vectors for transcribed text", time_search_start)
@@ -78,7 +84,8 @@ defmodule AudioTagger.Classifier.SemanticSearch do
     Axon.predict(model_info.model, model_info.params, label_inputs, compiler: EXLA)
   end
 
-  defp search_for_similar_codes(model_info, tokenizer, label_embeddings, element) do
+  defp search_for_similar_codes(%SemanticSearchInput{} = input, element, opts \\ []) do
+    %{model_info: model_info, tokenizer: tokenizer, label_embeddings: label_embeddings} = input
     k = Keyword.get(opts, :num_results, @default_k)
     similarity_threshold = Keyword.get(opts, :similarity_threshold, @default_similarity_threshold)
 
