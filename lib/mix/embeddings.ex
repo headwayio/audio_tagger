@@ -7,51 +7,22 @@ defmodule Mix.Tasks.Embeddings do
   def run(args) do
     Mix.Task.run("app.start")
 
-    csv = Enum.at(args, 0) || "icd9_codelist.csv"
+    if Enum.count(args) == 0 do
+      # No arguments. Download and use ICD-9 code list.
+      unless File.exists?(cached_download()) do
+        AudioTagger.SampleData.get_icd9_code_list_csv()
+      end
 
-    unless File.exists?(csv) do
-      retrieve_codelist()
-    end
+      AudioTagger.Vectors.precalculate(cached_download())
+    else
+      csv = Enum.at(args, 0)
 
-    AudioTagger.Vectors.precalculate(csv)
-  end
-
-  defp retrieve_codelist() do
-    # Call out to makefile to download ICD-9 data and unzip the necessary file.
-    System.cmd("make", ["all"])
-
-    # If the file is found, create a CSV version of it.
-    case File.read("icd9_codelist.txt") do
-      {:ok, data} -> convert_text_to_csv(data)
-      {:error, error} -> IO.puts("Failed to read icd9_codelist.txt file: #{error}")
+      AudioTagger.Vectors.precalculate(csv)
     end
   end
 
-  defp convert_text_to_csv(data) do
-    csv_data =
-      data
-      |> String.split("\n")
-      |> Enum.map(fn line ->
-        split = String.split(line, " ", parts: 2)
-        code = Enum.at(split, 0)
-        long_description = Enum.at(split, 1)
-
-        description =
-          case is_binary(long_description) do
-            true -> String.trim(long_description)
-            false -> ""
-          end
-
-        "\"#{code}\",\"#{description}\""
-      end)
-
-    csv_data =
-      (["\"CODE\",\"LONG DESCRIPTION\""] ++ csv_data)
-      |> Enum.join("\n")
-
-    case File.write("icd9_codelist.csv", csv_data) do
-      :ok -> :ok
-      {:error, error} -> IO.puts("Failed to write converted CSV file: #{error}")
-    end
+  defp cached_download() do
+    AudioTagger.SampleData.cache_dir()
+    |> Path.join("icd9_codelist.csv")
   end
 end
