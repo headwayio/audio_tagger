@@ -16,7 +16,7 @@ defmodule AudioTagger.Classifier.TextClassification do
   @doc """
   Requires:
     - a transcription_df as returned by AudioTagger.Transcriber.transcribe_audio
-    - and a labels_df that contains "code" and "short_description" columns
+    - and a labels_df that contains "code" and "long_description" columns
   """
   def tag(transcription_df, labels_df) do
     labels = AudioTagger.Tagger.to_list_of_label_descriptions(labels_df)
