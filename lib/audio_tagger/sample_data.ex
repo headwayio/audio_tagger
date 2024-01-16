@@ -53,7 +53,7 @@ defmodule AudioTagger.SampleData do
       end)
 
     csv_data =
-      (["\"CODE\",\"LONG DESCRIPTION\""] ++ csv_data)
+      (["\"code\",\"long_description\""] ++ csv_data)
       |> Enum.join("\n")
       |> String.replace_invalid()
 
