@@ -1,8 +1,13 @@
 defmodule AudioTagger.Trainer do
+  # AudioTagger.Trainer.train_model()
+
   @batch_size 32
   @sequence_length 64
 
-  def train_model() do
+  def start() do
+    # Increase the backtrace depth for troubleshooting
+    :erlang.system_flag(:backtrace_depth, 30)
+
     # 1. Load and configure the model
     {model_info, tokenizer} = prepare_model()
     %{model: model, params: params} = model_info
@@ -19,7 +24,7 @@ defmodule AudioTagger.Trainer do
     # Axon.get_output_shape(model, input)
 
     # 4. Prepare and run training loop
-    logits_model = Axon.nx(model, & &1.logits)
+    # logits_model = Axon.nx(model, & &1.logits)
 
     # Loss function from Bumblebee guide
     # loss =
@@ -37,10 +42,17 @@ defmodule AudioTagger.Trainer do
     optimizer = Polaris.Optimizers.adamw(learning_rate: 2.0e-5)
     accuracy = &Axon.Metrics.accuracy(&1, &2, from_logits: true, sparse: true)
 
+    # trained_model_state =
+    #   logits_model
+    #   |> Axon.Loop.trainer(loss, optimizer, log: 1)
+    #   |> Axon.Loop.metric(accuracy, "accuracy")
+    #   |> Axon.Loop.checkpoint(event: :epoch_completed)
+    #   |> Axon.Loop.run(train_data, params, epochs: 3, compiler: EXLA, strict?: false)
+
     trained_model_state =
-      logits_model
+      model
       |> Axon.Loop.trainer(loss, optimizer, log: 1)
-      |> Axon.Loop.metric(accuracy, "accuracy")
+      |> Axon.Loop.metric(:accuracy)
       |> Axon.Loop.checkpoint(event: :epoch_completed)
       |> Axon.Loop.run(train_data, params, epochs: 3, compiler: EXLA, strict?: false)
 
@@ -55,7 +67,8 @@ defmodule AudioTagger.Trainer do
     |> File.write!(Path.join(dir, "serialized_model_with_trained_model_state.bin"))
 
     # Evaluate the model using our test data
-    logits_model
+    # logits_model
+    model
     |> Axon.Loop.evaluator()
     |> Axon.Loop.metric(accuracy, "accuracy")
     |> Axon.Loop.run(test_data, trained_model_state, compiler: EXLA)
@@ -122,7 +135,6 @@ defmodule AudioTagger.Trainer do
       Explorer.Series.to_enum(positive), 
       Explorer.Series.to_enum(label)
     ])
-    |> dbg()
   end
 
   # defp tokenize_and_batch(stream, tokenizer, batch_size, sequence_length, id_to_label) do
@@ -130,23 +142,30 @@ defmodule AudioTagger.Trainer do
     stream
     |> Stream.chunk_every(batch_size)
     |> Stream.map(fn batch ->
-      batch |> dbg()
-
       # {anchor, positive, label} = Enum.unzip(batch)
 
-      {anchor, positive, label} = Enum.reduce(batch, {[], [], []}, fn {anchor_item, positive_item, label_item}, acc ->
-        {anchor_list, positive_list, label_list} = acc
+      # {anchor, positive, label} = Enum.reduce(batch, {[], [], []}, fn {anchor_item, positive_item, label_item}, acc ->
+      #   {anchor_list, positive_list, label_list} = acc
+      #
+      #   {
+      #     [anchor_item] ++ anchor_list,
+      #     [positive_item] ++ positive_list,
+      #     [label_item] ++ label_list,
+      #   }
+      # end)
+
+      {texts, label} = Enum.reduce(batch, {[], []}, fn {anchor_item, positive_item, label_item}, acc ->
+        {texts_list, label_list} = acc
 
         {
-          [anchor_item] ++ anchor_list,
-          [positive_item] ++ positive_list,
+          [{anchor_item, positive_item}] ++ texts_list,
           [label_item] ++ label_list,
         }
       end)
-      |> dbg()
 
-      anchor = Enum.reverse(anchor)
-      positive = Enum.reverse(positive)
+      # anchor = Enum.reverse(anchor)
+      # positive = Enum.reverse(positive)
+      texts = Enum.reverse(texts)
       label = Enum.reverse(label) |> Nx.tensor()
 
       # id_to_label_values = id_to_label |> Map.values()
@@ -156,14 +175,16 @@ defmodule AudioTagger.Trainer do
       #     Enum.find_index(id_to_label_values, fn label_value -> label_value == item end)
       #   end)
 
-      tokenized_anchor = Bumblebee.apply_tokenizer(tokenizer, anchor, length: sequence_length)
-      tokenized_positive = Bumblebee.apply_tokenizer(tokenizer, positive, length: sequence_length)
+      # tokenized_anchor = Bumblebee.apply_tokenizer(tokenizer, anchor, length: sequence_length)
+      # tokenized_positive = Bumblebee.apply_tokenizer(tokenizer, positive, length: sequence_length)
+      tokenized_texts = Bumblebee.apply_tokenizer(tokenizer, texts, length: sequence_length)
       # {tokenized, Nx.stack(label_ids)}
 
       # TODO: Is this the data format we want?
       # {tokenized_anchor, tokenized_positive, label}
 
-      {tokenized_anchor, Nx.tensor(label)}
+      {tokenized_texts, Nx.stack(label)}
+      # {Nx.Batch.concatenate([tokenized_texts]), Nx.stack(label)}
     end)
   end
 
@@ -187,5 +208,3 @@ defmodule AudioTagger.Trainer do
   #   |> Explorer.Series.to_list()
   # end
 end
-
-# AudioTagger.Trainer.train_model()
