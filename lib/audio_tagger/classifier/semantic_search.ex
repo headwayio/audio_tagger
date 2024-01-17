@@ -14,25 +14,12 @@ defmodule AudioTagger.Classifier.SemanticSearch do
   """
   alias AudioTagger.Classifier.SemanticSearchInput
   alias AudioTagger.Classifier.TagResult
+  alias AudioTagger.Utilities
 
   # Number of matches to return
   @default_k 5
   # Minimum similarity score for returned matches
   @default_similarity_threshold 0.7
-
-  def precalculate_label_vectors(labels_series, path) do
-    time_label_start = System.monotonic_time()
-
-    label_embeddings =
-      labels_series
-      |> Explorer.Series.to_list()
-      |> embed_label_vectors()
-
-    output_elapsed("Prepared label vector embeddings", time_label_start)
-
-    iodata = Nx.serialize(label_embeddings)
-    File.write(path, iodata)
-  end
 
   def tag_one(%SemanticSearchInput{labels_df: labels_df} = input, element) do
     labels = AudioTagger.Tagger.to_list_of_label_descriptions(labels_df)
@@ -50,7 +37,7 @@ defmodule AudioTagger.Classifier.SemanticSearch do
     {model_info, tokenizer} = prepare_model()
     # labels = AudioTagger.Tagger.to_list_of_label_descriptions(labels_df)
     label_embeddings = load_label_vectors(label_vectors_path)
-    output_elapsed("Prepared model and loaded label embeddings", time_prep_start)
+    Utilities.output_elapsed("Prepared model and loaded label embeddings", time_prep_start)
 
     IO.puts("Calculating similarity of transcribed text to labels in vector space")
     time_search_start = System.monotonic_time()
@@ -70,18 +57,9 @@ defmodule AudioTagger.Classifier.SemanticSearch do
         tag_one(input, element)
       end)
 
-    output_elapsed("Finished search for matching vectors for transcribed text", time_search_start)
+    Utilities.output_elapsed("Finished search for matching vectors for transcribed text", time_search_start)
 
     Explorer.DataFrame.put(transcription_df, "tags", tags)
-  end
-
-  defp embed_label_vectors(labels) do
-    {model_info, tokenizer} = prepare_model()
-    IO.puts("Creating vector embeddings for #{Enum.count(labels)} labels")
-
-    label_inputs = Bumblebee.apply_tokenizer(tokenizer, labels)
-
-    Axon.predict(model_info.model, model_info.params, label_inputs, compiler: EXLA)
   end
 
   defp search_for_similar_codes(%SemanticSearchInput{} = input, element, opts \\ []) do
@@ -142,13 +120,5 @@ defmodule AudioTagger.Classifier.SemanticSearch do
     {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, model_name})
 
     {model_info, tokenizer}
-  end
-
-  defp output_elapsed(label, time_start) do
-    time_end = System.monotonic_time()
-
-    IO.puts(
-      "#{label}. Took #{System.convert_time_unit(time_end - time_start, :native, :millisecond)}ms"
-    )
   end
 end

@@ -2,6 +2,7 @@ defmodule AudioTagger.Vectors do
   @moduledoc """
   Precalculates vector embeddings for a list of strings.
   """
+  alias AudioTagger.Utilities
 
   @doc "Creates vector embeddings for a given list of strings and stores those in a temp file for later use."
   def precalculate(input_filename) do
@@ -12,10 +13,33 @@ defmodule AudioTagger.Vectors do
     else
       input_filename
       |> prepare_csv!()
-      |> AudioTagger.Classifier.SemanticSearch.precalculate_label_vectors(output_file)
+      |> precalculate_label_vectors(output_file)
 
       IO.inspect(output_file, label: "Wrote vector embeddings")
     end
+  end
+
+  defp precalculate_label_vectors(labels_series, path) do
+    time_label_start = System.monotonic_time()
+
+    label_embeddings =
+      labels_series
+      |> Explorer.Series.to_list()
+      |> embed_label_vectors()
+
+    Utilities.output_elapsed("Prepared label vector embeddings", time_label_start)
+
+    iodata = Nx.serialize(label_embeddings)
+    File.write(path, iodata)
+  end
+
+  defp embed_label_vectors(labels) do
+    {model_info, tokenizer} = AudioTagger.Classifier.SemanticSearch.prepare_model()
+    IO.puts("Creating vector embeddings for #{Enum.count(labels)} labels")
+
+    label_inputs = Bumblebee.apply_tokenizer(tokenizer, labels)
+
+    Axon.predict(model_info.model, model_info.params, label_inputs, compiler: EXLA)
   end
 
   # Builds a file path adjacent to the input filename with a different extension.
@@ -31,12 +55,10 @@ defmodule AudioTagger.Vectors do
     filename
     |> Explorer.DataFrame.from_csv!(
       dtypes: [
-        {"CODE", :string},
-        {"DIAGNOSIS CODE", :string},
-        {"LONG DESCRIPTION", :string},
-        {"SHORT DESCRIPTION", :string}
+        {"code", :string},
+        {"long_description", :string},
       ]
     )
-    |> Explorer.DataFrame.pull("LONG DESCRIPTION")
+    |> Explorer.DataFrame.pull("long_description")
   end
 end
