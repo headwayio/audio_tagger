@@ -56,7 +56,7 @@ defmodule AudioTagger.Vectors do
     |> Explorer.DataFrame.from_csv!(
       dtypes: [
         {"code", :string},
-        {"long_description", :string},
+        {"long_description", :string}
       ]
     )
     |> Explorer.DataFrame.pull("long_description")

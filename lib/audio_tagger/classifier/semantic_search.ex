@@ -12,19 +12,22 @@ defmodule AudioTagger.Classifier.SemanticSearch do
 
   This is heavily based on the example given by Adrian Philipp (@adri) in https://github.com/elixir-nx/bumblebee/issues/100#issuecomment-1345563122
   """
-  alias AudioTagger.Classifier.SemanticSearchInput
-  alias AudioTagger.Classifier.TagResult
-  alias AudioTagger.Utilities
 
+  alias AudioTagger.Structs.SemanticSearchConfiguration
+  alias AudioTagger.Structs.TagResult
+
+  # Name of model to use for transforming text to vectors
+  @model_name "sentence-transformers/all-MiniLM-L6-v2"
   # Number of matches to return
   @default_k 5
   # Minimum similarity score for returned matches
   @default_similarity_threshold 0.7
 
-  def tag_one(%SemanticSearchInput{labels_df: labels_df} = input, element) do
-    labels = AudioTagger.Tagger.to_list_of_label_descriptions(labels_df)
+  @doc "Receives a configuration struct and a portion of text to search for within the list of vectors."
+  def tag_one(%SemanticSearchConfiguration{labels_df: labels_df} = input, text) do
+    labels = AudioTagger.Classifier.to_list_of_label_descriptions(labels_df)
 
-    search_for_similar_codes(input, element)
+    search_for_similar_codes(input, text)
     |> Enum.map(fn {index, score} ->
       {match_code, match_label} = find_label_for_index(index, labels, labels_df)
 
@@ -32,42 +35,12 @@ defmodule AudioTagger.Classifier.SemanticSearch do
     end)
   end
 
-  def tag(transcription_df, labels_df, label_vectors_path) do
-    time_prep_start = System.monotonic_time()
-    {model_info, tokenizer} = prepare_model()
-    # labels = AudioTagger.Tagger.to_list_of_label_descriptions(labels_df)
-    label_embeddings = load_label_vectors(label_vectors_path)
-    Utilities.output_elapsed("Prepared model and loaded label embeddings", time_prep_start)
-
-    IO.puts("Calculating similarity of transcribed text to labels in vector space")
-    time_search_start = System.monotonic_time()
-
-    input = %SemanticSearchInput{
-      model_info: model_info,
-      tokenizer: tokenizer,
-      labels_df: labels_df,
-      label_embeddings: label_embeddings
-    }
-
-    tags =
-      transcription_df
-      |> Explorer.DataFrame.pull("text")
-      |> Explorer.Series.downcase()
-      |> Explorer.Series.transform(fn element ->
-        tag_one(input, element)
-      end)
-
-    Utilities.output_elapsed("Finished search for matching vectors for transcribed text", time_search_start)
-
-    Explorer.DataFrame.put(transcription_df, "tags", tags)
-  end
-
-  defp search_for_similar_codes(%SemanticSearchInput{} = input, element, opts \\ []) do
+  defp search_for_similar_codes(%SemanticSearchConfiguration{} = input, text, opts \\ []) do
     %{model_info: model_info, tokenizer: tokenizer, label_embeddings: label_embeddings} = input
     k = Keyword.get(opts, :num_results, @default_k)
     similarity_threshold = Keyword.get(opts, :similarity_threshold, @default_similarity_threshold)
 
-    search_input = Bumblebee.apply_tokenizer(tokenizer, [element])
+    search_input = Bumblebee.apply_tokenizer(tokenizer, [text])
 
     search_embedding =
       Axon.predict(model_info.model, model_info.params, search_input, compiler: EXLA)
@@ -101,23 +74,22 @@ defmodule AudioTagger.Classifier.SemanticSearch do
     match_label = Enum.at(labels, index)
 
     match_code =
-      AudioTagger.Tagger.code_for_label(labels_df, match_label)
-
-    # |> IO.inspect()
+      AudioTagger.Classifier.code_for_label(labels_df, match_label)
 
     {match_code, match_label}
   end
 
+  @doc "Loads a serialized binary file of vector embeddings from disk."
   def load_label_vectors(path) do
     {:ok, binary} = File.read(path)
 
     Nx.deserialize(binary)
   end
 
+  @doc "Loads the model used for creating vector embeddings."
   def prepare_model do
-    model_name = "sentence-transformers/all-MiniLM-L6-v2"
-    {:ok, model_info} = Bumblebee.load_model({:hf, model_name})
-    {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, model_name})
+    {:ok, model_info} = Bumblebee.load_model({:hf, @model_name})
+    {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, @model_name})
 
     {model_info, tokenizer}
   end

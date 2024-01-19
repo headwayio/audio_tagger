@@ -1,42 +1,18 @@
 defmodule AudioTagger.Transcriber do
+  @moduledoc """
+  Contains functions to prepare a speech-to-text model for use in transcribing text.
+  """
+
   @default_model_name "openai/whisper-medium"
-  # @model_name "openai/whisper-large" ~= 6 GB
 
-  def transcribe_audio(featurizer, audio_file, opts \\ []) do
-    num_channels = Keyword.get(opts, :num_channels, 2)
-    model_name = Keyword.get(opts, :model_name, @default_model_name)
-
-    serving = prepare_serving(featurizer, model_name)
-
-    audio =
-      audio_file
-      |> Nx.from_binary(:f32)
-      |> Nx.reshape({:auto, num_channels})
-      |> Nx.mean(axes: [1])
-
-    serving
-    |> Nx.Serving.run(audio)
-    |> Stream.map(fn chunk ->
-      # TODO: We may be able to move this into `client_postprocessing/2
-      [start_mark, end_mark] =
-        for seconds <- [chunk.start_timestamp_seconds, chunk.end_timestamp_seconds] do
-          seconds |> round() |> Time.from_seconds_after_midnight() |> Time.to_string()
-        end
-
-      %{start_mark: start_mark, end_mark: end_mark, text: chunk.text}
-    end)
-
-    # |> Explorer.DataFrame.new()
-  end
-
-  def prepare_featurizer(opts \\ []) do
-    model_name = Keyword.get(opts, :model_name, @default_model_name)
+  @doc "Creates an Nx.Serving to perform speech-to-text tasks."
+  def prepare_serving(model_name \\ @default_model_name) do
     {:ok, featurizer} = Bumblebee.load_featurizer({:hf, model_name})
-
-    featurizer
+    prepare_serving_with_featurizer(featurizer, model_name)
   end
 
-  def prepare_serving(featurizer, model_name \\ @default_model_name) do
+  @doc "Creates an Nx.Serving to perform speech-to-text tasks, using the passed featurizer. This is helpful for direct use from Livebook where the featurizer is needed to define the Kino audio input."
+  def prepare_serving_with_featurizer(featurizer, model_name \\ @default_model_name) do
     {:ok, model_info} = Bumblebee.load_model({:hf, model_name})
     {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, model_name})
     {:ok, generation_config} = Bumblebee.load_generation_config({:hf, model_name})

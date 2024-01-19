@@ -2,10 +2,12 @@ defmodule AudioTagger.SampleData do
   @cache_dir_suffix "Library/Caches/audio_tagger"
   @icd9_url "https://www.cms.gov/medicare/coding/icd9providerdiagnosticcodes/downloads/icd-9-cm-v32-master-descriptions.zip"
 
+  @doc "Returns a directory for storing temporary files. On macOS, this is within the user's Library folder."
   def cache_dir() do
     Path.join(System.user_home(), @cache_dir_suffix)
   end
 
+  @doc "Downloads the ICD-9 code list from the CMS web site and converts it to a CSV within `cache_dir()`."
   def get_icd9_code_list_csv() do
     # First, download and extract the ICD-9 text file source.
     download_icd9_code_list()

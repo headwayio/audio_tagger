@@ -13,13 +13,15 @@ defmodule AudioTagger.Classifier.TextClassification do
 
   require Explorer.DataFrame
 
+  @model_name "facebook/bart-large-mnli"
+
   @doc """
   Requires:
     - a transcription_df as returned by AudioTagger.Transcriber.transcribe_audio
     - and a labels_df that contains "code" and "long_description" columns
   """
   def tag(transcription_df, labels_df) do
-    labels = AudioTagger.Tagger.to_list_of_label_descriptions(labels_df)
+    labels = AudioTagger.Classifier.to_list_of_label_descriptions(labels_df)
     serving = prepare_serving(labels)
 
     tags =
@@ -34,7 +36,7 @@ defmodule AudioTagger.Classifier.TextClassification do
           |> Enum.fetch(0)
 
         code =
-          AudioTagger.Tagger.code_for_label(labels_df, description)
+          AudioTagger.Classifier.code_for_label(labels_df, description)
           |> IO.inspect(label: "Detected code for #{element}")
 
         "#{code}: #{description}"
@@ -44,16 +46,17 @@ defmodule AudioTagger.Classifier.TextClassification do
     |> Explorer.DataFrame.put("tags", tags)
   end
 
-  def classify_text(serving, text) do
+  defp classify_text(serving, text) do
     output = Nx.Serving.run(serving, text)
 
     output.predictions
     |> Enum.map(&{&1.label, &1.score})
   end
 
+  @doc "Loads the model and prepares the serving for use."
   def prepare_serving(labels) do
-    {:ok, model_info} = Bumblebee.load_model({:hf, "facebook/bart-large-mnli"})
-    {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, "facebook/bart-large-mnli"})
+    {:ok, model_info} = Bumblebee.load_model({:hf, @model_name})
+    {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, @model_name})
 
     Bumblebee.Text.zero_shot_classification(model_info, tokenizer, labels,
       compile: [batch_size: 1, sequence_length: 100],

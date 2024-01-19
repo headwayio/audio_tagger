@@ -1,28 +1,37 @@
 defmodule AudioTagger.KeywordFinder do
-  # def run(text) do
-  #   phrases = extract_phrases(text)
-  #   classify_text(text, phrases)
-  #
-  # # Example output:
-  # # [
-  # #   %{label: "known coronary artery disease", score: 0.35812485218048096},
-  # #   %{label: "old man", score: 0.13899555802345276},
-  # #   %{label: "comes", score: 0.12400370836257935},
-  # #   %{label: "visit today", score: 0.10444625467061996},
-  # #   %{label: "unstable angina", score: 0.09210294485092163}
-  # # ]
-  # end
+  @moduledoc """
+  Provides Nx.Servings and a utility function for finding relevant phrases in text and then classifying the text with 
+  those phrases. For example:
+  1. Input text:
+     "Last month he was admitted to our hospital with unstable angina."
+  2. Run token classification + keep only verbs and adjective + noun combinations:
+     ["last month", "admitted", "hospital", "untable angina"]
+  3. Then, take the original input text in #1 and run zero-shot classification with the labels in #2:
+     [
+       %{label: "unstable angina", score: 0.433},
+       %{label: "last month", score: 0.276},
+       %{label: "admitted", score: 0.212},
+       %{label: "hospital", score: 0.079},
+     ]
+  """
 
-  def prepare_zero_shot_classification_serving(labels) do
-    {:ok, model_info} = Bumblebee.load_model({:hf, "facebook/bart-large-mnli"})
-    {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, "facebook/bart-large-mnli"})
+  @doc """
+  Creates an Nx.Serving for classifying tokens within text. The result of running this serving is a map including
+  `entities` in this format:
+  ```
+    [
+      %{label: "ADJ", start: 0, end: 4, score: 0.9987151622772217, phrase: "last"},
+      %{label: "NOUN", start: 5, end: 10, score: 0.999144434928894, phrase: "month"},
+      %{label: "PRON", start: 11, end: 13, score: 0.9995080232620239, phrase: "he"},
+      %{label: "AUX", start: 14, end: 17, score: 0.9972853660583496, phrase: "was"},
+      %{label: "VERB", start: 18, end: 26, score: 0.9994298815727234, phrase: "admitted"},
+      ...
+    ]
+  ```
 
-    Bumblebee.Text.zero_shot_classification(model_info, tokenizer, labels,
-      compile: [batch_size: 1, sequence_length: 100],
-      defn_options: [compiler: EXLA]
-    )
-  end
-
+  Can be paired with `cleanup_phrases` to combine adjectives with following nouns (e.g. "last month" as a single value
+  instead of "last" and "month") and keep only those combinations and the verbs.
+  """
   def prepare_token_classification_serving() do
     {:ok, model_info} =
       Bumblebee.load_model({:hf, "vblagoje/bert-english-uncased-finetuned-pos"})
@@ -36,20 +45,26 @@ defmodule AudioTagger.KeywordFinder do
     )
   end
 
-  def classify_text(text, labels) do
-    serving = prepare_zero_shot_classification_serving(labels)
-    output = Nx.Serving.run(serving, text)
+  @doc """
+  Creates an Nx.Serving for classifying text based on the passed `labels`. The result of running this serving is a map
+  including `predications` in this format:
+  ```
+    [
+      %{label: "unstable angina", score: 0.433},
+      %{label: "last month", score: 0.276},
+      %{label: "admitted", score: 0.212},
+      %{label: "hospital", score: 0.079},
+    ]
+  ```
+  """
+  def prepare_zero_shot_classification_serving(labels) do
+    {:ok, model_info} = Bumblebee.load_model({:hf, "facebook/bart-large-mnli"})
+    {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, "facebook/bart-large-mnli"})
 
-    output.predictions
-  end
-
-  def extract_phrases(serving, text) do
-    # Parts of speech to exclude from list of phrases
-
-    output = Nx.Serving.run(serving, text)
-    entities = output.entities
-
-    cleanup_phrases(entities)
+    Bumblebee.Text.zero_shot_classification(model_info, tokenizer, labels,
+      compile: [batch_size: 1, sequence_length: 100],
+      defn_options: [compiler: EXLA]
+    )
   end
 
   def cleanup_phrases(entities) do
