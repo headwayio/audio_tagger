@@ -33,6 +33,7 @@ defmodule AudioTagger.Classifier.SemanticSearch do
 
       %TagResult{code: match_code, label: match_label, score: score}
     end)
+    |> Enum.filter(&(String.length(&1.label) > 0))
   end
 
   defp search_for_similar_codes(%SemanticSearchConfiguration{} = input, text, opts \\ []) do
