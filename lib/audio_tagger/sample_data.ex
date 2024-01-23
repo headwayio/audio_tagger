@@ -22,15 +22,19 @@ defmodule AudioTagger.SampleData do
   end
 
   defp download_icd9_code_list(current_directory) do
+    zip = "icd9_codelist.zip"
+    source = "CMS32_DESC_LONG_DX.txt"
+    destination = "icd9_codelist.txt"
+
     # TODO: These were brought in from an earlier Makefile. This could use Elixir functions instead of `cmd` for each
     # step.
-    System.cmd("curl", [@icd9_url, "-o", "icd9_codelist.zip"], cd: current_directory)
-
-    System.cmd("unzip", ["-j", "icd9_codelist.zip", "CMS32_DESC_LONG_DX.txt"],
-      cd: current_directory
-    )
-
-    System.cmd("mv", ["CMS32_DESC_LONG_DX.txt", "icd9_codelist.txt"], cd: current_directory)
+    System.cmd("curl", [@icd9_url, "-o", zip], cd: current_directory)
+    System.cmd("unzip", ["-j", zip, source], cd: current_directory)
+    System.cmd("mv", [source, destination], cd: current_directory)
+    # File.rename!(
+    #   Path.join(current_directory, source),
+    #   Path.join(current_directory, destination)
+    # )
   end
 
   defp read_text_file(current_directory) do
