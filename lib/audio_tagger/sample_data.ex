@@ -1,11 +1,14 @@
 defmodule AudioTagger.SampleData do
-  # @cache_dir_suffix "Library/Caches/audio_tagger"
   @icd9_url "https://www.cms.gov/medicare/coding/icd9providerdiagnosticcodes/downloads/icd-9-cm-v32-master-descriptions.zip"
 
   @doc "Returns a directory for storing temporary files. On macOS, this is within the user's Library folder."
   def cache_dir() do
-    :filename.basedir(:user_cache, "audio_tagger")
-    # Path.join(System.user_home(), @cache_dir_suffix)
+    # Based on https://github.com/elixir-nx/bumblebee/blob/5c501b8e90f2cebf364708a06989fe41f148d99e/lib/bumblebee.ex#L1148
+    if dir = System.get_env("AUDIO_TAGGER_CACHE_DIR") do
+      Path.expand(dir)
+    else
+      :filename.basedir(:user_cache, "audio_tagger")
+    end
   end
 
   @doc "Downloads the ICD-9 code list from the CMS web site and converts it to a CSV within `cache_dir()`."
