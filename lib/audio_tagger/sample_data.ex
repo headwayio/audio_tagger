@@ -13,6 +13,10 @@ defmodule AudioTagger.SampleData do
 
   @doc "Downloads the ICD-9 code list from the CMS web site and converts it to a CSV within `cache_dir()`."
   def get_icd9_code_list_csv(current_directory \\ cache_dir()) do
+    unless File.exists?(current_directory) do
+      File.mkdir!(current_directory)
+    end
+
     # First, download and extract the ICD-9 text file source.
     download_icd9_code_list(current_directory)
 
