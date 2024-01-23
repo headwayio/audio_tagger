@@ -12,27 +12,29 @@ defmodule AudioTagger.SampleData do
   end
 
   @doc "Downloads the ICD-9 code list from the CMS web site and converts it to a CSV within `cache_dir()`."
-  def get_icd9_code_list_csv() do
+  def get_icd9_code_list_csv(current_directory \\ cache_dir()) do
     # First, download and extract the ICD-9 text file source.
-    download_icd9_code_list()
+    download_icd9_code_list(current_directory)
 
     # Then, create a CSV version of it.
-    data = read_text_file()
+    data = read_text_file(current_directory)
     convert_text_to_csv(data)
   end
 
-  defp download_icd9_code_list() do
+  defp download_icd9_code_list(current_directory) do
     # TODO: These were brought in from an earlier Makefile. This could use Elixir functions instead of `cmd` for each
     # step.
-    System.cmd("curl", [@icd9_url, "-o", "icd9_codelist.zip"], cd: cache_dir())
+    System.cmd("curl", [@icd9_url, "-o", "icd9_codelist.zip"], cd: current_directory)
 
-    System.cmd("unzip", ["-j", "icd9_codelist.zip", "CMS32_DESC_LONG_DX.txt"], cd: cache_dir())
+    System.cmd("unzip", ["-j", "icd9_codelist.zip", "CMS32_DESC_LONG_DX.txt"],
+      cd: current_directory
+    )
 
-    System.cmd("mv", ["CMS32_DESC_LONG_DX.txt", "icd9_codelist.txt"], cd: cache_dir())
+    System.cmd("mv", ["CMS32_DESC_LONG_DX.txt", "icd9_codelist.txt"], cd: current_directory)
   end
 
-  defp read_text_file() do
-    case cache_dir()
+  defp read_text_file(current_directory) do
+    case current_directory
          |> Path.join("icd9_codelist.txt")
          |> File.read() do
       {:ok, data} -> data
