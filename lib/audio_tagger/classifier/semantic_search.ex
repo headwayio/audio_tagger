@@ -37,14 +37,11 @@ defmodule AudioTagger.Classifier.SemanticSearch do
   end
 
   defp search_for_similar_codes(%SemanticSearchConfiguration{} = input, text, opts \\ []) do
-    %{model_info: model_info, tokenizer: tokenizer, label_embeddings: label_embeddings} = input
+    %{label_embeddings: label_embeddings} = input
     k = Keyword.get(opts, :num_results, @default_k)
     similarity_threshold = Keyword.get(opts, :similarity_threshold, @default_similarity_threshold)
 
-    search_input = Bumblebee.apply_tokenizer(tokenizer, [text])
-
-    search_embedding =
-      Axon.predict(model_info.model, model_info.params, search_input, compiler: EXLA)
+    search_embedding = AudioTagger.Vectors.embed([text])
 
     similarities =
       Bumblebee.Utils.Nx.cosine_similarity(

@@ -1,6 +1,9 @@
 defmodule AudioTagger.Vectors do
   @moduledoc """
   Precalculates vector embeddings for a list of strings.
+
+  A future improvement may be to manage these vectors using HNSWLib:
+   https://github.com/elixir-nx/hnswlib
   """
   alias AudioTagger.Utilities
 
@@ -19,27 +22,28 @@ defmodule AudioTagger.Vectors do
     end
   end
 
+  def embed(labels) do
+    {model_info, tokenizer} = AudioTagger.Classifier.SemanticSearch.prepare_model()
+
+    label_inputs = Bumblebee.apply_tokenizer(tokenizer, labels)
+
+    Axon.predict(model_info.model, model_info.params, label_inputs, compiler: EXLA)
+  end
+
   defp precalculate_label_vectors(labels_series, path) do
     time_label_start = System.monotonic_time()
+
+    IO.puts("Creating vector embeddings for #{Explorer.Series.count(labels_series)} labels")
 
     label_embeddings =
       labels_series
       |> Explorer.Series.to_list()
-      |> embed_label_vectors()
+      |> embed()
 
     Utilities.output_elapsed("Prepared label vector embeddings", time_label_start)
 
     iodata = Nx.serialize(label_embeddings)
     File.write(path, iodata)
-  end
-
-  defp embed_label_vectors(labels) do
-    {model_info, tokenizer} = AudioTagger.Classifier.SemanticSearch.prepare_model()
-    IO.puts("Creating vector embeddings for #{Enum.count(labels)} labels")
-
-    label_inputs = Bumblebee.apply_tokenizer(tokenizer, labels)
-
-    Axon.predict(model_info.model, model_info.params, label_inputs, compiler: EXLA)
   end
 
   # Builds a file path adjacent to the input filename with a different extension.
