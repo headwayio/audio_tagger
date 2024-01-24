@@ -67,6 +67,31 @@ defmodule AudioTagger.KeywordFinder do
     )
   end
 
+  def find_most_similar_label(text, labels, max_k \\ 5) do
+    label_embeddings = AudioTagger.Vectors.embed(labels)
+    search_embedding = AudioTagger.Vectors.embed([text])
+
+    k = min(Enum.count(labels), max_k)
+
+    {values, indices_of_most_similar} =
+      Bumblebee.Utils.Nx.cosine_similarity(
+        search_embedding.pooled_state,
+        label_embeddings.pooled_state
+      )
+      |> Nx.top_k(k: k)
+
+    List.zip([
+      Nx.to_flat_list(indices_of_most_similar),
+      Nx.to_flat_list(values)
+    ])
+    |> Enum.map(fn {index, score} ->
+      %{
+        label: Enum.at(labels, index),
+        score: score
+      }
+    end)
+  end
+
   def cleanup_phrases(entities) do
     ignored = ["DET", "PUNCT", "ADP", "NUM", "AUX", "PRON"]
 
