@@ -25,6 +25,10 @@ defmodule AudioTagger.Vectors do
   def embed(labels) do
     {model_info, tokenizer} = AudioTagger.Classifier.SemanticSearch.prepare_model()
 
+    embed_with_model(model_info, tokenizer, labels)
+  end
+
+  def embed_with_model(model_info, tokenizer, labels) do
     label_inputs = Bumblebee.apply_tokenizer(tokenizer, labels)
 
     Axon.predict(model_info.model, model_info.params, label_inputs, compiler: EXLA)
