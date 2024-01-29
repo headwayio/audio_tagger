@@ -6,13 +6,14 @@ defmodule AudioTagger.Transcriber do
   @default_model_name "openai/whisper-medium"
 
   @doc "Creates an Nx.Serving to perform speech-to-text tasks."
-  def prepare_serving(model_name \\ @default_model_name) do
+  def serving(model_name \\ @default_model_name) do
     {:ok, featurizer} = Bumblebee.load_featurizer({:hf, model_name})
-    prepare_serving_with_featurizer(featurizer, model_name)
+
+    serving_with_featurizer(featurizer, model_name)
   end
 
   @doc "Creates an Nx.Serving to perform speech-to-text tasks, using the passed featurizer. This is helpful for direct use from Livebook where the featurizer is needed to define the Kino audio input."
-  def prepare_serving_with_featurizer(featurizer, model_name \\ @default_model_name) do
+  def serving_with_featurizer(featurizer, model_name \\ @default_model_name) do
     {:ok, model_info} = Bumblebee.load_model({:hf, model_name})
     {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, model_name})
     {:ok, generation_config} = Bumblebee.load_generation_config({:hf, model_name})

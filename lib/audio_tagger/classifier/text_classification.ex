@@ -22,7 +22,7 @@ defmodule AudioTagger.Classifier.TextClassification do
   """
   def tag(transcription_df, labels_df) do
     labels = AudioTagger.Classifier.to_list_of_label_descriptions(labels_df)
-    serving = prepare_serving(labels)
+    serving = serving(labels)
 
     tags =
       transcription_df
@@ -54,7 +54,7 @@ defmodule AudioTagger.Classifier.TextClassification do
   end
 
   @doc "Loads the model and prepares the serving for use."
-  def prepare_serving(labels) do
+  def serving(labels) do
     {:ok, model_info} = Bumblebee.load_model({:hf, @model_name})
     {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, @model_name})
 

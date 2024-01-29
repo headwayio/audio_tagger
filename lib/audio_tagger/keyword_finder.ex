@@ -32,7 +32,7 @@ defmodule AudioTagger.KeywordFinder do
   Can be paired with `cleanup_phrases` to combine adjectives with following nouns (e.g. "last month" as a single value
   instead of "last" and "month") and keep only those combinations and the verbs.
   """
-  def prepare_token_classification_serving() do
+  def token_classification_serving() do
     {:ok, model_info} =
       Bumblebee.load_model({:hf, "vblagoje/bert-english-uncased-finetuned-pos"})
 
@@ -57,7 +57,7 @@ defmodule AudioTagger.KeywordFinder do
     ]
   ```
   """
-  def prepare_zero_shot_classification_serving(labels) do
+  def zero_shot_classification_serving(labels) do
     {:ok, model_info} = Bumblebee.load_model({:hf, "facebook/bart-large-mnli"})
     {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, "facebook/bart-large-mnli"})
 

@@ -34,7 +34,7 @@ defmodule AudioTagger.Vectors do
     Axon.predict(model_info.model, model_info.params, label_inputs, compiler: EXLA)
   end
 
-  def prepare_serving(model_name \\ "sentence-transformers/all-MiniLM-L6-v2") do
+  def serving(model_name \\ "sentence-transformers/all-MiniLM-L6-v2") do
     {:ok, model_info} = Bumblebee.load_model({:hf, model_name})
     {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, model_name})
 

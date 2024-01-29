@@ -9,7 +9,7 @@ defmodule AudioTagger.LivebookHelpers.Transcriber do
     num_channels = Keyword.get(opts, :num_channels, 2)
     model_name = Keyword.get(opts, :model_name, @default_model_name)
 
-    serving = AudioTagger.Transcriber.prepare_serving_with_featurizer(featurizer, model_name)
+    serving = AudioTagger.Transcriber.serving_with_featurizer(featurizer, model_name)
 
     audio =
       audio_file

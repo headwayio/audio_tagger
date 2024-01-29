@@ -21,7 +21,7 @@ defmodule AudioTagger.LivebookHelpers.KeywordFinder do
   end
 
   def extract_phrases(text) do
-    serving = KeywordFinder.prepare_token_classification_serving()
+    serving = KeywordFinder.token_classification_serving()
     output = Nx.Serving.run(serving, text)
     entities = output.entities
 
@@ -29,7 +29,7 @@ defmodule AudioTagger.LivebookHelpers.KeywordFinder do
   end
 
   def classify_text(text, labels) do
-    serving = KeywordFinder.prepare_zero_shot_classification_serving(labels)
+    serving = KeywordFinder.zero_shot_classification_serving(labels)
     output = Nx.Serving.run(serving, text)
 
     output.predictions
