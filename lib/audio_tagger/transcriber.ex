@@ -12,6 +12,15 @@ defmodule AudioTagger.Transcriber do
     serving_with_featurizer(featurizer, model_name)
   end
 
+  def child_spec(name, model_name \\ @default_model_name) do
+    serving = serving(model_name)
+
+    {
+      Nx.Serving,
+      serving: serving, name: name, batch_size: 4, batch_timeout: 100
+    }
+  end
+
   @doc "Creates an Nx.Serving to perform speech-to-text tasks, using the passed featurizer. This is helpful for direct use from Livebook where the featurizer is needed to define the Kino audio input."
   def serving_with_featurizer(featurizer, model_name \\ @default_model_name) do
     {:ok, model_info} = Bumblebee.load_model({:hf, model_name})

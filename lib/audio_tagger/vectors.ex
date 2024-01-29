@@ -41,6 +41,13 @@ defmodule AudioTagger.Vectors do
     Bumblebee.Text.TextEmbedding.text_embedding(model_info, tokenizer)
   end
 
+  def child_spec(name) do
+    {
+      Nx.Serving,
+      serving: serving(), name: name
+    }
+  end
+
   defp precalculate_label_vectors(labels_series, path) do
     time_label_start = System.monotonic_time()
 

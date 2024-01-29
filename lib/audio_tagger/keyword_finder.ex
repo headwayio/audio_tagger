@@ -45,6 +45,15 @@ defmodule AudioTagger.KeywordFinder do
     )
   end
 
+  def token_classification_child_spec(name) do
+    serving = token_classification_serving()
+
+    {
+      Nx.Serving,
+      serving: serving, name: name, batch_size: 1, batch_timeout: 100
+    }
+  end
+
   @doc """
   Creates an Nx.Serving for classifying text based on the passed `labels`. The result of running this serving is a map
   including `predications` in this format:
