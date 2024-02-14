@@ -29,7 +29,7 @@ defmodule AudioTagger.MixProject do
       # {:kino_bumblebee, "~> 0.4.0"},
       # {:kino_explorer, "~> 0.1.11"}
 
-      {:bumblebee, "~> 0.4.0"},
+      {:bumblebee, "~> 0.4.2"},
       {:exla, ">= 0.0.0"},
       {:explorer, "~> 0.7.0"}
     ]
