@@ -36,7 +36,7 @@ defmodule AudioTagger.KeywordFinder do
     {:ok, model_info} =
       Bumblebee.load_model({:hf, "vblagoje/bert-english-uncased-finetuned-pos"})
 
-    {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, "bert-base-uncased"})
+    {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, "google-bert/bert-base-uncased"})
 
     Bumblebee.Text.token_classification(model_info, tokenizer,
       aggregation: :same,
